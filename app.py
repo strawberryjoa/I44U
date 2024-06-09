@@ -19,15 +19,18 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 # from sqlalchemy import or_
 # from sqlalchemy.orm import relationship
 # from bs4 import BeautifulSoup
-import pdfkit
 from flask import make_response, request
 
 
 #### 1. Flask로 App 생성 ####
 app = Flask(__name__) # Flask Application 생성
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app_database.db' # DB URI 설정 / .db 파일 지정
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///workspace/I44U/I44U/instance/app_database.db' # DB URI 설정 / .db 파일 지정
+# SQLite 데이터베이스 경로 설정
+db_path = '/workspace/I44U/I44U/instance/app_database.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
 app.config['SECRET_KEY'] = 'A+주고10조' # 보안 키 설정
-app.config['UPLOAD_FOLDER'] = "static/contest_img"
+app.config['UPLOAD_FOLDER'] = "/workspace/I44U/I44U/static/contest_img"
 db = SQLAlchemy(app)
 migrate = Migrate(app, db) # 마이크레이션 코드 추가
 
@@ -36,14 +39,14 @@ login_manager = LoginManager() # 로그인 기능 생성
 login_manager.init_app(app) # SQLAlchemy - Flask와 로그인 기능 연결
 
 ## (상세 페이지에 필요한 이미지 파일 경로) ##
-CONTEST_FOLDER = "static/contest_img"
+CONTEST_FOLDER = "/workspace/I44U/I44U/static/contest_img"
 app.config['CONTEST_FOLDER'] = CONTEST_FOLDER
-ACTIVITY_FOLDER = "static/activity_img"
+ACTIVITY_FOLDER = "/workspace/I44U/I44U/static/activity_img"
 app.config['ACTIVITY_FOLDER'] = ACTIVITY_FOLDER
 
 ## 2-1. 공모전 데이터 저장 ##
 def save_contest_csv_to_db():
-    contest_path = "crawlling/result_contest.csv"
+    contest_path = "/workspace/I44U/I44U/crawlling/result_contest.csv"
     df = pd.read_csv(contest_path)
 
     # 컬럼명 변경
@@ -56,7 +59,7 @@ def save_contest_csv_to_db():
 
 ## 2-2. 대외활동 데이터 저장 ##
 def save_activities_csv_to_db():
-    activity_path = "crawlling/result_activity.csv"
+    activity_path = "/workspace/I44U/I44U/crawlling/result_activity.csv"
     df = pd.read_csv(activity_path)
 
     # 컬럼명 변경
@@ -69,7 +72,7 @@ def save_activities_csv_to_db():
 
 ## 2-3. 취업 / 인턴 데이터 저장 ##
 def save_career_csv_to_db():
-    career_path = "crawlling/result_career.csv"
+    career_path = "/workspace/I44U/I44U/crawlling/result_career.csv"
     df = pd.read_csv(career_path, encoding='utf-8-sig')  # Adjust encoding if needed
     
     # Iterate through each row in the DataFrame and save it to the database
@@ -92,7 +95,7 @@ def save_career_csv_to_db():
 
 ## 2-4. 교내활동 데이터 저장 ##
 def save_campus_csv_to_db():
-    campus_path = "crawlling/result_campus.csv"
+    campus_path = "/workspace/I44U/I44U/crawlling/result_campus.csv"
     df = pd.read_csv(campus_path, encoding='utf-8-sig')
 
     # 컬럼명 변경
@@ -968,43 +971,6 @@ def portfolio():
     return render_template('portfolio.html', portfolio_contests=portfolio_contests, portfolio_activities=portfolio_activities, 
                            portfolio_careers=portfolio_careers, portfolio_campus=portfolio_campus, user=current_user)
 
-# wkhtmltopdf 경로 설정
-path_to_wkhtmltopdf = 'C:/Program Files/wkhtmltopdf/bin/wkhtmltopdf.exe'
-config = pdfkit.configuration(wkhtmltopdf=path_to_wkhtmltopdf)
-
-@app.route('/export_portfolio_pdf', methods=['POST'])
-@login_required
-def export_portfolio_pdf():
-    user_portfolios = Portfolio.query.filter_by(user_id=current_user.id).all()
-    portfolio_contests = [Contest.query.get(f.contest_id) for f in user_portfolios if f.contest_id]
-    portfolio_activities = [Activity.query.get(f.activity_id) for f in user_portfolios if f.activity_id]
-    portfolio_careers = [Career.query.get(f.career_id) for f in user_portfolios if f.career_id]
-    portfolio_campus = [Campus.query.get(f.campus_id) for f in user_portfolios if f.campus_id]
-
-    rendered = render_template('portfolio.html', portfolio_contests=portfolio_contests, 
-                               portfolio_activities=portfolio_activities, 
-                               portfolio_careers=portfolio_careers, 
-                               portfolio_campus=portfolio_campus, 
-                               user=current_user,
-                               is_pdf=True)  # PDF 생성을 조건네 맞춤
-
-    options = {
-        'encoding': 'UTF-8',
-        'enable-local-file-access': None,
-        'margin-top': '10mm',
-        'margin-right': '10mm',
-        'margin-bottom': '10mm',
-        'margin-left': '10mm',
-    }
-
-    pdf = pdfkit.from_string(rendered, False, configuration=config, options=options)
-
-    response = make_response(pdf)
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = 'attachment; filename=portfolio.pdf'
-    
-    return response
-
 
 ## 13-5. 포트폴리오 사진 업로드 ##
 profile_photos = "static/profile_photos"
@@ -1159,3 +1125,4 @@ if __name__ == '__main__':
         # save_campus_csv_to_db()  # 교내활동 CSV 파일을 데이터베이스에 저장
 
     app.run(debug=True)  # 디버그 모드로 앱 실행
+    #app.run(host='0.0.0.0', port=80, debug=True)
